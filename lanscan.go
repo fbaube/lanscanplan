@@ -59,7 +59,7 @@ func init() {
 		switch name {
 		case "lo0": // local loopback
 			longName = ":loopback"
-		case "en0": // ethernet primary
+		case "en0", "eth0": // ethernet primary
 			longName = ":ethernet0"
 		}
 		fmt.Printf("NetIfc[%d:%s%s][%d] %v \n",
@@ -71,7 +71,8 @@ func init() {
 				var s, sCand string
 				s = adr.String()
 				// Is it of the form n.n.n.n/n
-				if name == "en0" && S.Count(s, ".") == 3 && S.Count(s, "/") == 1 {
+				if (name == "en0" || name == "eth0") &&
+					S.Count(s, ".") == 3 && S.Count(s, "/") == 1 {
 					if sipEN0 != "" {
 						println(">> MULTIPLE CANDIDATES")
 					}
