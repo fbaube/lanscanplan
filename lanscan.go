@@ -62,11 +62,11 @@ func init() {
 		case "en0": // ethernet primary
 			longName = ":ethernet0"
 		}
-		// fmt.Printf("NetIfc[%d:%s%s][%d] %v \n",
-		//	i, name, longName, len(adrs), ifc)
+		fmt.Printf("NetIfc[%d:%s%s][%d] %v \n",
+			i, name, longName, len(adrs), ifc)
 		if longName != "" {
-			fmt.Printf("NetIfc[%d:%s%s][%d] \n\t %v \n",
-				i, name, longName, len(adrs), ifc)
+			// fmt.Printf("NetIfc[%d:%s%s][%d] \n\t %v \n",
+			//	i, name, longName, len(adrs), ifc)
 			for j, adr := range adrs {
 				var s, sCand string
 				s = adr.String()
@@ -111,11 +111,16 @@ func CheckAndReturnClassC() string {
 	ipLkp = LookupHost()
 	sipOtb = ipOtb.String()
 	sipLkp = ipLkp.String()
+	lkpFail := ""
+	if S.HasPrefix(sipLkp, "127.") {
+		lkpFail = "(lookup failed)"
+	}
 	fmt.Printf("Outbound (wrt. UDP): %s \n", sipOtb)
-	fmt.Printf("LookupIP (Hostname): %s \n", sipLkp)
+	fmt.Printf("LookupIP (Hostname): %s %s \n", sipLkp, lkpFail)
 	fmt.Printf("en0 Class C network: %s \n", sipEN0)
-
-	if sipOtb != sipLkp {
+	if lkpFail == "" {
+		sipLkp = sipOtb
+	} else if sipOtb != sipLkp {
 		panic("Outbound and Lookup to not match")
 	}
 	if !S.HasPrefix(sipEN0, sipOtb) {
