@@ -10,11 +10,44 @@ package main
 // 192.168.1.0/24 = range of ip's from 192.168.1.1 to 192.168.1.255
 // Class C: 255.255.255.0
 
+// Class C addresses have high hex digit 110x.
+// Class C addresses have a 24-bit network mask.
+// This leaves 21 bits for network,
+// a max of 2,097,152 network addresses,
+// i.e. 192-223 . 0-255 . 0-255 . 0
+
+// Private Addresses Provided in RFC 1918:
+// Class C Range of Addresses: 192.168.(0-255).x
+
+// The special class B (/16) block 169.254.x.x is reserved for
+// systems that automatically assign
+// systems addresses from this block to enable them to c
+// ommunicate even if no server can be found for “proper” IP
+// address assignment using DHCP. This is described in a special
+// topic in the section describing DHCP.
+
+// A MAC is 48 bits, 12 hex digits, 6 bytes.
+
+// Limited broadcasts are sent to a special destination IPv4 address
+// of 255.255.255.255. A limited broadcast address (255.255.255.255)
+// is never a source IPv4 address, only a destination IPv4 address.
+
+// Directed broadcasts are sent to a special destination IPv4 address
+// of 192.168.xx.255. You cannot use a directed broadcast IPv4 address
+// as an IPv4 address for a network device.
+
+// An IPv4 network address is a special address that uniquely identifies
+// a network. Routers use a network address to identify a network.
+// In a network address, all host bits zero: 192.168.xx.0
+
 import (
 	"fmt"
 	"net"
 	"os"
 	S "strings"
+	"time"
+
+	FP "github.com/tatsushid/go-fastping"
 )
 
 // MyNetIfcAdrs is (via net.InterfaceAddrs()) a list of the system's unicast
@@ -94,15 +127,81 @@ func init() {
 	*/
 }
 
+//  ipEN0 net.IP
 var ipOtb net.IP
 var ipLkp net.IP
-var ipEN0 net.IP
 var sipOtb string
 var sipLkp string
 var sipEN0 string
 
+var classCmap []bool
+
 func main() {
+	// var ownClassC string
+	var e error
+
+	/* theClassC = */
 	CheckAndReturnClassC()
+	e = doPing(sipOtb)
+	if e != nil {
+		println("doPing:", e)
+	}
+	e = doPingWholeClassC(sipOtb)
+	if e != nil {
+		println("doPingWholeClassC:", e)
+	}
+}
+
+func doPingWholeClassC(sIP string) error {
+	var theIPs net.IP
+	var bb []byte
+	var ownLastByte byte
+	classCmap = make([]bool, 256)
+	// Convert input string to [4]byte
+	// Cycle thru 1-254 in third byte
+	theIPs = net.ParseIP(sIP)
+	bb = theIPs.To4()
+	ownLastByte = bb[3]
+	fmt.Printf("%v => %d \n", bb, ownLastByte)
+	for i := 1; i < 255; i++ {
+		bb[3] = byte(i)
+		e := doPing(net.IP(bb).String())
+		if e != nil {
+			fmt.Printf("doPing: (%d) %s \n", i, e.Error())
+		} else {
+			classCmap[i] = true
+		}
+	}
+	return nil
+}
+
+func doPing(sIP string) error {
+	var e error
+	var pinger *FP.Pinger
+	pinger = FP.NewPinger()
+	pinger.MaxRTT = 50 * time.Millisecond
+
+	// func ResolveIPAddr(network, address string) (*IPAddr, error)
+	// "network" must be an IP network name.
+	// If the host in "address" is not an IP literal IP, ResolveIPAddr
+	// resolves the address to an address of IP end point. Otherwise,
+	// it parses the address as a literal IP address.
+
+	pinger.AddIP(sIP)
+	pinger.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
+		fmt.Printf("IP Addr: %s receive, RTT: %v \n", addr.String(), rtt)
+	}
+	/*
+		pinger.OnIdle = func() {
+			fmt.Println(sIP, "finish")
+		}
+	*/
+	e = pinger.Run()
+	if e != nil {
+		fmt.Println(e)
+		return e
+	}
+	return nil
 }
 
 func CheckAndReturnClassC() string {
